@@ -4,6 +4,7 @@ import '../app_colors.dart';
 import '../helpers.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
+import '../services/notification_store.dart';
 import 'reminder_screen.dart';
 
 class MyEventsScreen extends StatefulWidget {
@@ -308,8 +309,8 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
                         .cancelRegistration(registrationId);
                     // remove the reminder too
                     await NotificationService().cancelReminder();
-                    // leave a notification in the bell feed too
-                    await FirestoreService().addNotification(
+                    // leave a notification in the bell feed too (local)
+                    await NotificationStore.instance.add(
                       title: 'Registration cancelled',
                       body:
                           'Your spot for $title was released. You can register again anytime.',

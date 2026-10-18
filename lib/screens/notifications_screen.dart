@@ -1,9 +1,16 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../app_colors.dart';
+import '../form_feedback.dart';
 import '../helpers.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_store.dart';
 import 'event_details_screen.dart';
+
+// ------------------------------------------------------------
+// NOTIFICATIONS (kept on the device — no Firestore storage)
+// ------------------------------------------------------------
+// The list is rendered from NotificationStore, which is a local,
+// per-student list. Events it links to still load from Firestore.
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -13,18 +20,23 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  // open a notification: read it, then open its event (if it has one)
-  void openNotification(DocumentSnapshot doc) async {
-    Map data = doc.data() as Map;
+  @override
+  void initState() {
+    super.initState();
+    // make sure this student's local list is loaded
+    NotificationStore.instance.ensureLoaded();
+  }
 
-    if (data['read'] != true) {
-      await FirestoreService().markNotificationRead(doc.id);
+  // open a notification: read it, then open its event (if it has one)
+  void openNotification(AppNotification notification) async {
+    if (!notification.read) {
+      await NotificationStore.instance.markRead(notification.id);
     }
 
-    String eventId = textOf(data['eventId']);
+    String eventId = notification.eventId;
     if (eventId.isEmpty || !mounted) return;
 
-    DocumentSnapshot event = await FirestoreService().getEvent(eventId);
+    var event = await FirestoreService().getEvent(eventId);
     if (!event.exists || !mounted) return;
 
     Navigator.push(
@@ -77,18 +89,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   // one notification in the list
-  Widget notificationCard(DocumentSnapshot doc) {
-    Map data = doc.data() as Map;
-    bool read = data['read'] == true;
-    bool hasEvent = textOf(data['eventId']).isNotEmpty;
-
-    dynamic createdAt = data['createdAt'];
-    String when = createdAt is Timestamp
-        ? timeAgo(createdAt.toDate())
-        : '';
+  Widget notificationCard(AppNotification notification) {
+    bool read = notification.read;
+    bool hasEvent = notification.eventId.isNotEmpty;
+    String when = timeAgo(notification.createdAt);
 
     return GestureDetector(
-      onTap: () => openNotification(doc),
+      onTap: () => openNotification(notification),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
@@ -100,7 +107,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            typeIcon(textOf(data['type']), read),
+            typeIcon(notification.type, read),
             const SizedBox(width: 12),
 
             // title, time and message
@@ -112,7 +119,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          textOf(data['title']),
+                          notification.title,
                           style: const TextStyle(
                               fontSize: 14, fontWeight: FontWeight.bold),
                         ),
@@ -127,7 +134,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    textOf(data['body']),
+                    notification.body,
                     style: const TextStyle(
                         color: AppColors.greyText, fontSize: 12),
                   ),
@@ -192,20 +199,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
               const SizedBox(height: 20),
 
-              // the notification list
+              // the notification list (local, newest first)
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirestoreService().getMyNotifications(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.primary),
-                      );
-                    }
-
-                    List<QueryDocumentSnapshot> notifications =
-                        snapshot.data!.docs;
+                child: ListenableBuilder(
+                  listenable: NotificationStore.instance,
+                  builder: (context, _) {
+                    List<AppNotification> notifications =
+                        NotificationStore.instance.items;
 
                     if (notifications.isEmpty) {
                       return const Center(
@@ -229,19 +229,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       );
                     }
 
-                    // newest first
-                    notifications.sort((a, b) {
-                      final dynamic ta = (a.data() as Map)['createdAt'];
-                      final dynamic tb = (b.data() as Map)['createdAt'];
-                      if (ta is Timestamp && tb is Timestamp) {
-                        return tb.compareTo(ta);
-                      }
-                      return 0;
-                    });
-
-                    int unread = notifications
-                        .where((doc) => (doc.data() as Map)['read'] != true)
-                        .length;
+                    int unread = NotificationStore.instance.unreadCount;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,8 +251,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 ),
                                 GestureDetector(
                                   onTap: () async {
-                                    await FirestoreService()
-                                        .markAllNotificationsRead();
+                                    await NotificationStore.instance
+                                        .markAllRead();
+                                    if (!context.mounted) return;
+                                    showSuccessSnack(context,
+                                        'All notifications marked as read.');
                                   },
                                   child: const Text(
                                     'Mark all read',
@@ -281,8 +272,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         Expanded(
                           child: ListView(
                             children: [
-                              for (var doc in notifications)
-                                notificationCard(doc),
+                              for (var notification in notifications)
+                                notificationCard(notification),
                             ],
                           ),
                         ),

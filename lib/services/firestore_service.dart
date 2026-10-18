@@ -14,8 +14,10 @@ class FirestoreService {
   //
   //   events          research-congress-2026
   //   registrations   research-congress-2026__khimcabatingan03
-  //   notifications   khimcabatingan03_registration-confirmed_2026-10-15-153012
   //   users           khimcabatingan03@gmail.com
+  //
+  // (notifications are NOT stored here anymore — they stay on the
+  //  device, see services/notification_store.dart)
 
   // the readable part that identifies the student
   // (first part of the email, or a piece of the account id)
@@ -71,11 +73,15 @@ class FirestoreService {
     required String location,
     required String description,
     required String image,
+    double? lat,
+    double? lng,
+    String? id,
   }) async {
     // readable id based on the title (example: "research-congress-2026")
-    String id = await _uniqueId('events', slugify(title));
+    String wanted = id ?? slugify(title);
+    String readable = await _uniqueId('events', wanted);
 
-    await _db.collection('events').doc(id).set({
+    await _db.collection('events').doc(readable).set({
       'title': title,
       'category': category,
       'dateLabel': dateLabel,
@@ -83,6 +89,8 @@ class FirestoreService {
       'location': location,
       'description': description,
       'image': image,
+      'lat': lat, // venue coordinates (used by the map)
+      'lng': lng,
       'createdAt': Timestamp.now(),
     });
   }
@@ -102,162 +110,232 @@ class FirestoreService {
     await _db.collection('events').doc(eventId).delete();
   }
 
+  // ------------------------------------------------------------
+  // SAMPLE EVENTS — Bulacan State University, Malolos, Bulacan
+  // ------------------------------------------------------------
+  // These are the events the app seeds when the list is empty.
+  //
+  // Older versions used vague venues ("Event Hall", "CECT Auditorium")
+  // which could not be found in Bulacan, so the map showed a place
+  // outside the Philippines. The venues below are real places around
+  // Bulacan State University (Main Campus, Brgy. Guinhawa, Malolos
+  // City) and the coordinates are saved on the event itself, so the
+  // map pin and the "Open in Maps" button land on the right spot.
+  //
+  // "id" and "oldTitle" are only used to find documents that an older
+  // version already saved — they are never written to Firestore.
+  static const List<Map<String, Object?>> sampleEvents = [
+    {
+      'id': 'tech-talk-intro-to-flutter',
+      'oldTitle': 'Tech Talk: Intro to Flutter',
+      'title': 'BulSU Tech Talk: Intro to Flutter',
+      'category': 'Seminar',
+      'dateLabel': 'OCT 28',
+      'timeLabel': '1:00 PM - 3:00 PM',
+      'location':
+          'BulSU E-Library, Main Campus, Guinhawa, Malolos City, Bulacan',
+      'description':
+          'SAMPLE EVENT - a sample entry for the EventHub demo, not an '
+          'official BulSU announcement. A short afternoon tech talk for '
+          'students who want to start building mobile apps, held at the '
+          'BulSU E-Library on the Main Campus in Malolos City.',
+      'image': 'assets/images/event_tech.png',
+      'lat': 14.857966, // BulSU Main Campus
+      'lng': 120.813834,
+    },
+    {
+      'id': 'inter-college-quiz-bowl',
+      'oldTitle': 'Inter-College Quiz Bowl',
+      'title': 'BulSU Inter-College Quiz Bowl',
+      'category': 'Academic',
+      'dateLabel': 'OCT 05',
+      'timeLabel': '10:00 AM - 12:00 PM',
+      'location':
+          'BulSU Valencia Hall, Main Campus, Guinhawa, Malolos City, Bulacan',
+      'description':
+          'SAMPLE EVENT - a sample entry for the EventHub demo, not an '
+          'official BulSU announcement. An inter-college quiz competition '
+          'between the colleges of Bulacan State University, held at '
+          'Valencia Hall (the university gymnasium) on the Main Campus in '
+          'Malolos City. Open to all registered student participants.',
+      'image': 'assets/images/event_quiz.png',
+      'lat': 14.857966, // BulSU Main Campus
+      'lng': 120.813834,
+    },
+    {
+      'id': 'acoustic-night',
+      'oldTitle': 'Acoustic Night',
+      'title': 'BulSU Acoustic Night',
+      'category': 'Entertainment',
+      'dateLabel': 'OCT 14',
+      'timeLabel': '6:00 PM - 9:00 PM',
+      'location':
+          'BulSU Activity Center, Main Campus, Guinhawa, Malolos City, Bulacan',
+      'description':
+          'SAMPLE EVENT - a sample entry for the EventHub demo, not an '
+          'official BulSU announcement. An evening of live acoustic '
+          'performances by BulSU student bands at the BulSU Activity '
+          'Center on the Main Campus in Malolos City. Good music, food '
+          'stalls, and a night to remember with your classmates.',
+      'image': 'assets/images/event_music.png',
+      'lat': 14.857966, // BulSU Main Campus
+      'lng': 120.813834,
+    },
+    {
+      'id': 'inter-college-basketball-league',
+      'oldTitle': 'Inter-College Basketball League',
+      'title': 'BulSU Inter-College Basketball League',
+      'category': 'Sports',
+      'dateLabel': 'NOV 02',
+      'timeLabel': '2:00 PM - 5:00 PM',
+      'location':
+          'Bulacan Provincial Capitol Gymnasium, Guinhawa, Malolos City, Bulacan',
+      'description':
+          'SAMPLE EVENT - a sample entry for the EventHub demo, not an '
+          'official BulSU announcement. The inter-college basketball '
+          'games of the BulSU teams, played at the Bulacan Provincial '
+          'Capitol Gymnasium in Malolos City, Bulacan. Cheer for your '
+          'college team from the opening ceremony to the final tip-off.',
+      'image': 'assets/images/event_sports.png',
+      'lat': 14.856111, // Bulacan Provincial Capitol Gymnasium
+      'lng': 120.815000,
+    },
+    {
+      'id': 'research-congress-2026',
+      'oldTitle': 'Research Congress 2026',
+      'title': 'BulSU Research Congress 2026',
+      'category': 'Academic',
+      'dateLabel': 'SEP 30',
+      'timeLabel': '8:00 AM - 11:00 AM',
+      'location':
+          'BulSU Pimentel Hall, Main Campus, Guinhawa, Malolos City, Bulacan',
+      'description':
+          'SAMPLE EVENT - a sample entry for the EventHub demo, not an '
+          'official BulSU announcement. Student researchers present their '
+          'completed papers and studies at the BulSU Research Congress, '
+          'held at Pimentel Hall on the Main Campus in Malolos City.',
+      'image': 'assets/images/event_workshop.png',
+      'lat': 14.857966, // BulSU Main Campus
+      'lng': 120.813834,
+    },
+  ];
+
   // add sample events one time only (so the list is not empty)
   Future<void> addSampleEvents() async {
     QuerySnapshot snapshot = await _db.collection('events').limit(1).get();
     if (snapshot.docs.isNotEmpty) return; // already has events
 
-    await addEvent(
-      title: 'Tech Talk: Intro to Flutter',
-      category: 'Seminar',
-      dateLabel: 'OCT 28',
-      timeLabel: '1:00 PM - 3:00 PM',
-      location: 'CECT Auditorium',
-      description:
-          'Learn how to build beautiful, high-performance mobile apps with Flutter. This session covers widgets, layouts, navigation, and state management for your first cross-platform app.',
-      image: 'assets/images/event_tech.png',
-    );
-    await addEvent(
-      title: 'Inter-College Quiz Bowl',
-      category: 'Academic',
-      dateLabel: 'OCT 05',
-      timeLabel: '10:00 AM - 12:00 PM',
-      location: 'Event Hall',
-      description:
-          'A friendly academic competition between colleges. Show your mastery in general education, major courses, and current events. Open to all registered student participants.',
-      image: 'assets/images/event_quiz.png',
-    );
-    await addEvent(
-      title: 'Acoustic Night',
-      category: 'Entertainment',
-      dateLabel: 'OCT 14',
-      timeLabel: '6:00 PM - 9:00 PM',
-      location: 'Event Hall',
-      description:
-          'An evening of live acoustic performances from student bands and solo artists. Enjoy good music, food stalls, and a night to remember with your classmates.',
-      image: 'assets/images/event_music.png',
-    );
-    await addEvent(
-      title: 'Inter-College Basketball League',
-      category: 'Sports',
-      dateLabel: 'NOV 02',
-      timeLabel: '2:00 PM - 5:00 PM',
-      location: 'Covered Court',
-      description:
-          'Cheer for your college team in the annual basketball league. Games start at 2:00 PM with the opening ceremony before the first tip-off.',
-      image: 'assets/images/event_sports.png',
-    );
-    await addEvent(
-      title: 'Research Congress 2026',
-      category: 'Academic',
-      dateLabel: 'SEP 30',
-      timeLabel: '8:00 AM - 11:00 AM',
-      location: 'Library Function Hall',
-      description:
-          'Student researchers present their completed papers and studies. Attend the congress to learn new research methods and techniques from your fellow students.',
-      image: 'assets/images/event_workshop.png',
-    );
+    for (Map<String, Object?> event in sampleEvents) {
+      await addEvent(
+        id: textOf(event['id']),
+        title: textOf(event['title']),
+        category: textOf(event['category']),
+        dateLabel: textOf(event['dateLabel']),
+        timeLabel: textOf(event['timeLabel']),
+        location: textOf(event['location']),
+        description: textOf(event['description']),
+        image: textOf(event['image']),
+        lat: (event['lat'] as num?)?.toDouble(),
+        lng: (event['lng'] as num?)?.toDouble(),
+      );
+    }
   }
 
-  // ------------------------------------------------------------
-  // NOTIFICATIONS
-  // ------------------------------------------------------------
+  // update the sample events that an older version already saved.
+  // Everything happens in place: the document is only updated (never
+  // created, never deleted), so no duplicate event can appear and the
+  // registrations that point at it keep working.
+  Future<void> _updateSampleEvents() async {
+    for (Map<String, Object?> event in sampleEvents) {
+      String id = textOf(event['id']);
+      String oldTitle = textOf(event['oldTitle']);
 
-  // get the notifications for the logged in student
-  // (sorted newest first here because Firestore orders are done
-  //  in the screen after reading them all)
-  Stream<QuerySnapshot> getMyNotifications() {
-    String uid = FirebaseAuth.instance.currentUser!.uid;
-    return _db
-        .collection('notifications')
-        .where('userId', isEqualTo: uid)
-        .snapshots();
+      // find the saved document: by its id, or by the old title when
+      // the id was changed by hand in the Firebase console
+      DocumentSnapshot doc = await _db.collection('events').doc(id).get();
+      if (!doc.exists) {
+        QuerySnapshot found = await _db
+            .collection('events')
+            .where('title', isEqualTo: oldTitle)
+            .get();
+        if (found.docs.isEmpty) continue; // sample was removed — leave it
+        doc = found.docs.first;
+      }
+
+      // the details that are out of date in older documents
+      Map<String, Object?> update = {
+        'title': event['title'],
+        'category': event['category'],
+        'location': event['location'],
+        'description': event['description'],
+        'lat': event['lat'],
+        'lng': event['lng'],
+      };
+
+      Map data = doc.data() as Map;
+      bool changed =
+          update.entries.any((entry) => data[entry.key] != entry.value);
+      if (!changed) continue; // already up to date (this runs every launch)
+
+      try {
+        await doc.reference.update(update);
+        await _syncRegistrations(doc.id, update);
+      } catch (_) {
+        // could not finish this one (cancelled meanwhile or no internet)
+        // — the next launch tries again, the other events still continue
+      }
+    }
   }
 
-  // save one notification for the logged in student
-  Future<void> addNotification({
-    required String title,
-    required String body,
-    String type = 'info', // info, event, registration, cancellation, reminder
-    String eventId = '', // open this event when the notification is tapped
-    DateTime? createdAt, // only used for the sample notifications
-  }) async {
-    String uid = FirebaseAuth.instance.currentUser!.uid;
-
-    // readable id: student + message + time
-    // (example: "khimcabatingan03_registration-confirmed_2026-10-15-153012")
-    DateTime when = createdAt ?? DateTime.now();
-    String wanted =
-        '${_userKey()}_${slugify(title)}_${idStamp(when)}';
-    String id = await _uniqueId('notifications', wanted);
-
-    await _db.collection('notifications').doc(id).set({
-      'userId': uid,
-      'title': title,
-      'body': body,
-      'type': type,
-      'eventId': eventId,
-      'read': false,
-      'createdAt': Timestamp.fromDate(when),
-    });
-  }
-
-  // read one notification (when the student opens it)
-  Future<void> markNotificationRead(String notificationId) async {
-    await _db
-        .collection('notifications')
-        .doc(notificationId)
-        .update({'read': true});
-  }
-
-  // read every notification at once (the "Mark all read" button)
-  Future<void> markAllNotificationsRead() async {
-    String uid = FirebaseAuth.instance.currentUser!.uid;
-    QuerySnapshot snapshot = await _db
-        .collection('notifications')
-        .where('userId', isEqualTo: uid)
-        .where('read', isEqualTo: false)
+  // My Events and History keep their own copy of the event, so the
+  // title and venue are refreshed there too. The registration document
+  // itself (its id and its userId) is not touched at all, so My Events,
+  // reminders and cancellation keep working exactly as before.
+  Future<void> _syncRegistrations(
+      String eventId, Map<String, Object?> update) async {
+    QuerySnapshot docs = await _db
+        .collection('registrations')
+        .where('eventId', isEqualTo: eventId)
         .get();
+    if (docs.docs.isEmpty) return;
+
+    Map<String, Object?> copy = {
+      'title': update['title'],
+      'category': update['category'],
+      'location': update['location'],
+    };
+
+    for (DocumentSnapshot doc in docs.docs) {
+      try {
+        await doc.reference.update(copy);
+      } catch (_) {
+        // this registration was cancelled while we were refreshing it —
+        // skip it and still update the rest
+      }
+    }
+  }
+
+  // ------------------------------------------------------------
+  // OLD NOTIFICATION DATA (no longer used)
+  // ------------------------------------------------------------
+  // Notifications now live on the device only (NotificationStore).
+  // This wipes whatever was written to the "notifications" collection
+  // before, so no notification data is kept in Firestore anymore.
+  Future<void> removeStoredNotifications() async {
+    QuerySnapshot snapshot =
+        await _db.collection('notifications').limit(400).get();
+    if (snapshot.docs.isEmpty) return; // nothing left
 
     WriteBatch batch = _db.batch();
     for (DocumentSnapshot doc in snapshot.docs) {
-      batch.update(doc.reference, {'read': true});
+      batch.delete(doc.reference);
     }
     await batch.commit();
-  }
 
-  // add welcome notifications one time only (so the list is not empty)
-  Future<void> addSampleNotifications() async {
-    String uid = FirebaseAuth.instance.currentUser!.uid;
-    QuerySnapshot snapshot = await _db
-        .collection('notifications')
-        .where('userId', isEqualTo: uid)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isNotEmpty) return; // already has notifications
-
-    DateTime now = DateTime.now();
-    await addNotification(
-      title: 'Events of the week',
-      body:
-          'Inter-College Quiz Bowl and Acoustic Night are happening soon. Check the Home screen for details.',
-      type: 'event',
-      createdAt: now.subtract(const Duration(minutes: 30)),
-    );
-    await addNotification(
-      title: 'New event added',
-      body:
-          'Research Congress 2026 is now open at the Library Function Hall. Tap to see the details.',
-      type: 'event',
-      createdAt: now.subtract(const Duration(hours: 5)),
-    );
-    await addNotification(
-      title: 'Welcome to Eventhub',
-      body:
-          'Your account is ready. Browse campus events and register in a tap.',
-      type: 'info',
-      createdAt: now.subtract(const Duration(days: 2)),
-    );
+    // there may be more than one batch worth
+    if (snapshot.docs.length == 400) {
+      await removeStoredNotifications();
+    }
   }
 
   // ------------------------------------------------------------
@@ -271,17 +349,22 @@ class FirestoreService {
     // 1) events first — other collections point at them
     Map<String, String> renamedEvents = await _renameEvents();
 
-    // 2) keep the eventId inside registrations / notifications working
+    // 2) keep the eventId inside registrations working
+    //    (notifications are local now and no longer live in Firestore)
     for (MapEntry<String, String> entry in renamedEvents.entries) {
       await _fixEventId('registrations', entry.key, entry.value);
-      await _fixEventId('notifications', entry.key, entry.value);
     }
 
-    // 3) then the documents that belong to a student
+    // 3) the profile of the signed in student moves to the account id
+    await _renameUserDocs();
+
+    // 4) then the documents that belong to a student
     Map<String, String> nameKeys = await _nameKeys();
     await _renameRegistrations(nameKeys);
-    await _renameNotifications(nameKeys);
-    await _renameUserDocs();
+
+    // 5) finally give the sample events their BulSU venues and the
+    //    coordinates the map needs (in place, no new documents)
+    await _updateSampleEvents();
   }
 
   // uid -> first part of the email (from the users collection)
@@ -289,10 +372,17 @@ class FirestoreService {
     Map<String, String> keys = {};
     QuerySnapshot users = await _db.collection('users').get();
     for (DocumentSnapshot doc in users.docs) {
-      String email = textOf((doc.data() as Map)['email']).toLowerCase();
-      if (email.contains('@')) {
-        keys[doc.id] = email.split('@').first;
-      }
+      Map data = doc.data() as Map;
+      String email = textOf(data['email']).toLowerCase();
+      if (!email.contains('@')) continue;
+      String prefix = email.split('@').first;
+
+      // profiles are saved under the account id now, but older
+      // documents still use the email address as their document id
+      String uid = textOf(data['uid']);
+      if (uid.isEmpty && !doc.id.contains('@')) uid = doc.id;
+
+      if (uid.isNotEmpty) keys[uid] = prefix;
     }
     return keys;
   }
@@ -354,46 +444,28 @@ class FirestoreService {
     }
   }
 
-  // old notifications -> "student_message_2026-10-15-153012"
-  Future<void> _renameNotifications(Map<String, String> nameKeys) async {
-    QuerySnapshot docs = await _db.collection('notifications').get();
-
-    for (DocumentSnapshot doc in docs.docs) {
-      if (_isCleanId(doc.id)) continue;
-
-      Map data = doc.data() as Map;
-      String uid = textOf(data['userId']);
-      String key = nameKeys[uid] ?? _shortId(uid);
-      dynamic created = data['createdAt'];
-      DateTime when =
-          created is Timestamp ? created.toDate() : DateTime.now();
-      String newId = await _uniqueId(
-          'notifications',
-          '${key}_${slugify(textOf(data['title']))}_${idStamp(when)}');
-
-      WriteBatch batch = _db.batch();
-      batch.set(_db.collection('notifications').doc(newId), data);
-      batch.delete(doc.reference);
-      await batch.commit();
-    }
-  }
-
-  // give every user document the student email as the readable id
-  // (example: "UHGRCT2Vgjdz1X0XVU0Aq8Z01du2" -> "khimcabatingan03@gmail.com")
+  // give the signed in student's profile the account id (uid) as its
+  // document id (example: "khimcabatingan03@gmail.com" ->
+  // "OJLzAzCaTnXzzycCHgCV7d2sPnr1") so every profile uses the same id
+  // that the registrations store in userId.
+  // The old document is copied over first and only removed after that,
+  // so no student info is lost. The other students' profiles are moved
+  // the same way the next time they sign in (AuthService).
   Future<void> _renameUserDocs() async {
-    QuerySnapshot users = await _db.collection('users').get();
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return; // nobody is signed in
 
-    for (DocumentSnapshot doc in users.docs) {
-      Map data = doc.data() as Map;
-      String email = textOf(data['email']).toLowerCase().trim();
-      if (!email.contains('@')) continue; // no email to use as the name
-      if (doc.id == email) continue; // already readable
+    String email = textOf(user.email).toLowerCase().trim();
+    if (!email.contains('@')) return; // no email to look for
 
-      WriteBatch batch = _db.batch();
-      batch.set(_db.collection('users').doc(email), data);
-      batch.delete(doc.reference);
-      await batch.commit();
-    }
+    DocumentSnapshot old = await _db.collection('users').doc(email).get();
+    if (!old.exists) return; // already saved under the account id
+
+    Map<String, dynamic> profile = Map<String, dynamic>.from(old.data() as Map);
+    await _db.collection('users')
+        .doc(user.uid)
+        .set(profile, SetOptions(merge: true));
+    await old.reference.delete();
   }
 
   // ------------------------------------------------------------

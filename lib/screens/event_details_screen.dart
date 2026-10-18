@@ -3,6 +3,7 @@ import '../app_colors.dart';
 import '../helpers.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
+import '../services/notification_store.dart';
 import 'location_screen.dart';
 
 class EventDetailsScreen extends StatefulWidget {
@@ -44,6 +45,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     showModalBottomSheet(
       context: context,
+      // the sheet covers the full screen, not just the area above
+      // the bottom navigation bar
+      useRootNavigator: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -206,8 +210,8 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
           .scheduleReminder(textOf(widget.data['title']), eventTime);
     }
 
-    // leave a notification in the bell feed too
-    await FirestoreService().addNotification(
+    // leave a notification in the bell feed too (kept on the device)
+    await NotificationStore.instance.add(
       title: 'Registration confirmed',
       body:
           'You are registered for ${textOf(widget.data['title'])} on ${textOf(widget.data['dateLabel'])} at ${timeStart(widget.data['timeLabel'])}.',

@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../app_colors.dart';
+import '../form_feedback.dart';
 import '../services/auth_services.dart';
+import 'complete_profile_screen.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
+import 'set_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +16,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
@@ -39,29 +43,41 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // put the google account details into the textfields
+      if (!mounted) return;
+
+      // brand new Google user (no saved profile yet) ->
+      // show the short profile form (name + email from Google)
+      bool profileComplete =
+          await AuthService().hasCompletedProfile(result.user!);
+      if (!mounted) return;
+
       setState(() {
-        emailController.text = result.user!.email ?? '';
-        passwordController.text = '';
         googleLoading = false;
       });
 
-      // small delay so the student can see the fields filled
-      await Future.delayed(const Duration(seconds: 1));
-
-      // go to home screen after logging in
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
+      if (!profileComplete) {
+        Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (route) => false,
+          MaterialPageRoute(
+              builder: (context) => const CompleteProfileScreen()),
         );
+        return;
       }
+
+      // returning user with a completed profile -> straight to home
+      showSuccessSnack(context, 'Signed in with Google.');
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
     } catch (e) {
       setState(() {
         googleLoading = false;
-        errorMessage = 'Google sign-in failed. Try again.';
       });
+      if (mounted) {
+        showErrorSnack(context, 'Google sign-in failed. Try again.');
+      }
     }
   }
 
@@ -70,11 +86,15 @@ class _LoginScreenState extends State<LoginScreen> {
     String email = emailController.text.trim();
     String password = passwordController.text;
 
-    // input validation
-    if (email.isEmpty || password.isEmpty) {
-      setState(() {
-        errorMessage = 'Please fill up all the fields.';
-      });
+    // invalid input -> red border + red message below that field
+    // (nothing is sent to Firebase until every field is valid)
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      // field errors replace any older form-wide message
+      if (errorMessage.isNotEmpty) {
+        setState(() {
+          errorMessage = '';
+        });
+      }
       return;
     }
 
@@ -85,30 +105,49 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await AuthService().login(email: email, password: password);
+      if (!mounted) return;
+      showSuccessSnack(context, 'Logged in successfully.');
       // go to home screen after logging in
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (route) => false,
-        );
-      }
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
+      return;
     } on FirebaseAuthException catch (e) {
       setState(() {
-        // Google accounts have no password, so email/password login
-        // will always fail for them
-        if (e.code == 'wrong-password' ||
-            e.code == 'invalid-credential' ||
-            e.code == 'user-not-found') {
-          errorMessage =
-              'Email or password is incorrect. If you signed up with '
-              'Google, tap "Continue with Google" instead.';
-        } else {
-          errorMessage = 'Incorrect email or password. Try again.';
-        }
+        loading = false;
+      });
+
+      if (e.code == 'wrong-password') {
+        setState(() {
+          errorMessage = 'Email or password is incorrect. Try again.';
+        });
+        return;
+      }
+
+      if (e.code == 'user-not-found' || e.code == 'invalid-credential') {
+        // Google-created accounts have no password yet — offer to
+        // set an EventHub password instead of failing silently
+        bool googleOnly = await AuthService().isGoogleOnlyAccount(email);
+        if (!mounted) return;
+        setState(() {
+          errorMessage = googleOnly
+              ? 'This account signs in with Google and has no EventHub password yet.'
+              : 'Email or password is incorrect. Try again.';
+        });
+        if (googleOnly) offerPasswordSetup(email);
+        return;
+      }
+
+      setState(() {
+        errorMessage = e.code == 'too-many-requests'
+            ? 'Too many attempts. Please wait a moment and try again.'
+            : 'Something went wrong. Try again.';
       });
     } catch (e) {
       setState(() {
+        loading = false;
         errorMessage = 'Something went wrong. Try again.';
       });
     }
@@ -118,12 +157,55 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  // AlertDialog: this account was created with Google, so it has no
+  // password — let the student add one securely (never the Google one)
+  void offerPasswordSetup(String email) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('No EventHub password yet'),
+        content: Text(
+          'This account was created with Google, so email/password login '
+          'does not work for $email yet.\n\n'
+          'You can set an EventHub password (never your Google password) '
+          'to log in either way — no second account is created.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Not now',
+                style: TextStyle(color: AppColors.greyText)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => SetPasswordScreen(email: email)),
+              );
+            },
+            child: const Text('Set password',
+                style: TextStyle(color: AppColors.primary)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: Form(
+          // red border + red message while typing; both clear
+          // automatically as soon as the input becomes valid
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          key: _formKey,
+          child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,34 +257,30 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 30),
 
-              // school email
-              const Text('School email',
-                  style: TextStyle(fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
-              TextField(
+              // school email — red outline + red message when invalid
+              TextFormField(
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: 'juan@student.edu.ph',
-                  prefixIcon: const Icon(Icons.mail_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                validator: validateEmail,
+                decoration: appInputDecoration(
+                  label: 'School email',
+                  hint: 'juan@student.edu.ph',
+                  prefixIcon: Icons.mail_outline,
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              // password
-              const Text('Password',
-                  style: TextStyle(fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
-              TextField(
+              // password — red outline + red message when invalid
+              TextFormField(
                 controller: passwordController,
                 obscureText: obscurePassword,
-                decoration: InputDecoration(
-                  hintText: 'Your password',
-                  prefixIcon: const Icon(Icons.lock_outline),
+                validator: (value) =>
+                    validateRequired(value, label: 'Password'),
+                decoration: appInputDecoration(
+                  label: 'Password',
+                  hint: 'Your password',
+                  prefixIcon: Icons.lock_outline,
                   suffixIcon: IconButton(
                     icon: Icon(obscurePassword
                         ? Icons.visibility_off
@@ -212,9 +290,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         obscurePassword = !obscurePassword;
                       });
                     },
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
@@ -347,6 +422,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
+          ),
         ),
       ),
     );
@@ -355,18 +431,25 @@ class _LoginScreenState extends State<LoginScreen> {
   // dialog to ask for the email, then send a password reset link
   void askForgotPassword() {
     TextEditingController emailInput = TextEditingController();
+    final GlobalKey<FormState> resetFormKey = GlobalKey<FormState>();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Forgot password?'),
-        content: TextField(
-          controller: emailInput,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            hintText: 'juan@student.edu.ph',
-            prefixIcon: Icon(Icons.mail_outline),
+        content: Form(
+          key: resetFormKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: TextFormField(
+            controller: emailInput,
+            keyboardType: TextInputType.emailAddress,
+            validator: validateEmail,
+            decoration: appInputDecoration(
+              label: 'Email',
+              hint: 'juan@student.edu.ph',
+              prefixIcon: Icons.mail_outline,
+            ),
           ),
         ),
         actions: [
@@ -377,28 +460,22 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           TextButton(
             onPressed: () async {
+              // invalid email -> red border + red message in the dialog
+              if (!(resetFormKey.currentState?.validate() ?? false)) {
+                return;
+              }
               String email = emailInput.text.trim();
               // save the messenger before the dialog closes
               ScaffoldMessengerState messenger =
                   ScaffoldMessenger.of(context);
               Navigator.pop(context);
-              if (email.isEmpty) return;
               try {
                 await FirebaseAuth.instance
                     .sendPasswordResetEmail(email: email);
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Reset link sent. Check your email.'),
-                    backgroundColor: AppColors.primary,
-                  ),
-                );
+                showSnackOn(messenger, 'Reset link sent. Check your email.');
               } catch (e) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('Could not send reset email.'),
-                    backgroundColor: AppColors.primary,
-                  ),
-                );
+                showSnackOn(messenger, 'Could not send reset email.',
+                    error: true);
               }
             },
             child: const Text('Send link',

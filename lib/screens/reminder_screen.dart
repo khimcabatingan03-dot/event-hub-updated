@@ -3,6 +3,7 @@ import '../app_colors.dart';
 import '../helpers.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
+import '../services/notification_store.dart';
 
 class ReminderScreen extends StatefulWidget {
   final String registrationId;
@@ -80,8 +81,8 @@ class _ReminderScreenState extends State<ReminderScreen> {
         widget.title,
         DateTime.now().add(const Duration(hours: 1)),
       );
-      // and a notification in the bell feed
-      await FirestoreService().addNotification(
+      // and a notification in the bell feed (kept on the device)
+      await NotificationStore.instance.add(
         title: 'Reminder set',
         body:
             'We will notify you 1 hour before ${widget.title} starts.',
