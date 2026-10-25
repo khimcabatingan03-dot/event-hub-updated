@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "999953291666",
+    "project_id": "event-hub-639e6",
+    "storage_bucket": "event-hub-639e6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:999953291666:android:08368facd037d49147094b",
+        "android_client_info": {
+          "package_name": "com.example.eventhub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "999953291666-lup09dot0d6ts16es0475cb4b76heftb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARAkKjYE55fphBpU88u4kVyFqKuLRR4qk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "999953291666-lup09dot0d6ts16es0475cb4b76heftb.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "999953291666-psmtos4tumh7u90iacsdfdjo0o1rp6qp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.eventhub"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:999953291666:android:a86fd4d4f65e451247094b",
+        "android_client_info": {
+          "package_name": "event.hub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "999953291666-lup09dot0d6ts16es0475cb4b76heftb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARAkKjYE55fphBpU88u4kVyFqKuLRR4qk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "999953291666-lup09dot0d6ts16es0475cb4b76heftb.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "999953291666-psmtos4tumh7u90iacsdfdjo0o1rp6qp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.eventhub"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
