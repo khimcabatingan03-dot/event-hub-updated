@@ -35,7 +35,6 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       var result = await AuthService().signInWithGoogle();
 
-      // user closed the google picker
       if (result == null) {
         setState(() {
           googleLoading = false;
@@ -45,8 +44,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      // brand new Google user (no saved profile yet) ->
-      // show the short profile form (name + email from Google)
       bool profileComplete =
           await AuthService().hasCompletedProfile(result.user!);
       if (!mounted) return;
@@ -64,7 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // returning user with a completed profile -> straight to home
+      // returning user with a completed profile (straight to home)
       showSuccessSnack(context, 'Signed in with Google.');
       Navigator.pushAndRemoveUntil(
         context,
@@ -157,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  // AlertDialog: this account was created with Google, so it has no
+  // AlertDialog- this account was created with Google, so it has no
   // password — let the student add one securely (never the Google one)
   void offerPasswordSetup(String email) {
     showDialog(

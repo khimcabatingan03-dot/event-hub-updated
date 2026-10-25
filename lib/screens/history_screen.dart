@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../app_colors.dart';
+import '../helpers.dart';
 import '../services/firestore_service.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -11,6 +12,15 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // persist the right status in the background: finished events get
+    // "completed" here. The list below is filtered by date anyway, so
+    // a failed write never breaks what's on screen.
+    FirestoreService().syncRegistrationStatuses().ignore();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,8 +57,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       );
                     }
 
-                    List<QueryDocumentSnapshot> registrations =
-                        snapshot.data!.docs;
+                    // only events that are already finished live here;
+                    // upcoming ones stay in the My Events tab
+                    List<QueryDocumentSnapshot> registrations = snapshot
+                        .data!.docs
+                        .where((doc) =>
+                            isCompletedRegistration(doc.data() as Map))
+                        .toList();
+
+                    // newest first so every month groups together
+                    // under a single header
+                    registrations.sort((a, b) {
+                      Map dataA = a.data() as Map;
+                      Map dataB = b.data() as Map;
+                      return finishedAt(textOf(dataB['dateLabel']),
+                              textOf(dataB['timeLabel']))
+                          .compareTo(finishedAt(textOf(dataA['dateLabel']),
+                              textOf(dataA['timeLabel'])));
+                    });
 
                     if (registrations.isEmpty) {
                       return const Center(
@@ -68,13 +94,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       );
                     }
 
-                    // group the events by month (example: OCTOBER 2026)
+                    // group the events by month
                     List<Widget> items = [];
                     String currentMonth = '';
 
                     for (var doc in registrations) {
                       Map data = doc.data() as Map;
-                      String month = monthName('${data['dateLabel'] ?? ''}');
+                      DateTime when = finishedAt(
+                          textOf(data['dateLabel']), textOf(data['timeLabel']));
+                      String month = monthHeader(when);
 
                       // add the month header when it changes
                       if (month != currentMonth) {
@@ -106,19 +134,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  // convert "OCT 28" to "OCTOBER 2026"
-  String monthName(String dateLabel) {
+  String monthHeader(DateTime when) {
     List<String> months = [
       'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
       'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
     ];
-    String first = dateLabel.isEmpty ? '' : dateLabel.split(' ')[0].toUpperCase();
-    int index = months.indexOf(first);
-    if (index < 0) {
-      // dateLabel format not recognized, just use the current month
-      index = DateTime.now().month - 1;
-    }
-    return '${months[index]} ${DateTime.now().year}';
+    return '${months[when.month - 1]} ${when.year}';
   }
 
   // each history item
@@ -202,7 +223,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
                   const SizedBox(height: 8),
 
-                  // completed chip
+                  // completed 
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),

@@ -15,8 +15,7 @@ class LocationScreen extends StatefulWidget {
   final String timeLabel;
   final String image;
 
-  // optional coordinates — when these are set in the Firestore document
-  // we use them straight away instead of guessing from the location text
+  // optional
   final double? lat;
   final double? lng;
 
@@ -36,14 +35,11 @@ class LocationScreen extends StatefulWidget {
 }
 
 class _LocationScreenState extends State<LocationScreen> {
-  // resolved map position (null = we couldn't work out where it is)
   LatLng? _coords;
 
-  // true while we are still looking the place up
+  // true while we are still looking the place 
   bool _looking = true;
 
-  // Bulacan State University, Main Campus (Guinhawa, Malolos City) —
-  // used as a fallback when a Bulacan venue cannot be looked up
   static const LatLng _bulsuCampus = LatLng(14.857966, 120.813834);
 
   @override
@@ -52,15 +48,12 @@ class _LocationScreenState extends State<LocationScreen> {
     _resolveCoords();
   }
 
-  // is this point inside the Philippines? (the app only shows venues
-  // in Bulacan, so anything found abroad is a bad match)
   bool _inPhilippines(LatLng point) =>
       point.latitude >= 4.5 &&
       point.latitude <= 21.5 &&
       point.longitude >= 116.5 &&
       point.longitude <= 127.0;
 
-  // does this venue text point at Bulacan State University or Malolos?
   bool _isBulacanVenue(String place) {
     String text = place.toLowerCase();
     return text.contains('bulsu') ||
@@ -71,14 +64,7 @@ class _LocationScreenState extends State<LocationScreen> {
         text.contains('campus');
   }
 
-  // work out the coordinates to show on the map:
-  //   1. use lat/lng from the Firestore document if they exist
-  //   2. otherwise look the location text up on OpenStreetMap (free),
-  //      always inside the Philippines
-  //   3. if that fails, Bulacan venues fall back to the BulSU campus
   Future<void> _resolveCoords() async {
-    // 1. coordinates already stored on the event
-    //    (saved for every sample event, so the pin lands on the venue)
     if (widget.lat != null && widget.lng != null) {
       LatLng saved = LatLng(widget.lat!, widget.lng!);
       if (_inPhilippines(saved)) {
@@ -89,8 +75,6 @@ class _LocationScreenState extends State<LocationScreen> {
         });
         return;
       }
-      // coordinates outside the Philippines are wrong — look the
-      // venue up instead of showing them
     }
 
     final String place = widget.location.trim();
@@ -100,13 +84,9 @@ class _LocationScreenState extends State<LocationScreen> {
       return;
     }
 
-    // 2. try the place as written, then with Bulacan added for context
-    //    (results outside the Philippines are thrown away by _geocode)
     LatLng? found = await _geocode(place);
     found ??= await _geocode('$place, Bulacan, Philippines');
 
-    // 3. a Bulacan venue we still cannot find is shown on the BulSU
-    //    campus instead of guessing a place abroad
     if (found == null && _isBulacanVenue(place)) {
       found = _bulsuCampus;
     }
@@ -118,9 +98,6 @@ class _LocationScreenState extends State<LocationScreen> {
     });
   }
 
-  // ask OpenStreetMap's free (Nominatim) service where this text is.
-  // The search is limited to the Philippines and a result outside the
-  // country is treated as "not found".
   Future<LatLng?> _geocode(String query) async {
     final Uri uri = Uri.parse(
       'https://nominatim.openstreetmap.org/search'
@@ -146,7 +123,6 @@ class _LocationScreenState extends State<LocationScreen> {
 
       return point;
     } catch (_) {
-      // offline, timed out, bad json — all treated as "not found"
       return null;
     }
   }
@@ -177,10 +153,8 @@ class _LocationScreenState extends State<LocationScreen> {
           .parse('https://www.google.com/maps/search/?api=1&query=$pos'));
     }
 
-    // otherwise fall back to searching by the location text
-    // (Philippines is added so a maps app never opens a place abroad)
     final String search = Uri.encodeComponent('$place, Philippines');
-    candidates.add(Uri.parse('geo:0,0?q=$search')); // device maps app
+    candidates.add(Uri.parse('geo:0,0?q=$search')); 
     candidates.add(Uri.parse(
         'https://www.google.com/maps/search/?api=1&query=$search'));
     candidates.add(Uri.parse('https://maps.google.com/?q=$search'));
@@ -195,7 +169,6 @@ class _LocationScreenState extends State<LocationScreen> {
       }
     }
 
-    // none of them worked
     if (mounted) {
       _showError("Couldn't open a maps app on this device.");
     }
@@ -210,8 +183,6 @@ class _LocationScreenState extends State<LocationScreen> {
     );
   }
 
-  // the original grey "streets" drawing — kept as the fallback for when we
-  // can't work out where the event is (empty location, no internet, etc)
   Widget _placeholderMap() {
     return Container(
       width: double.infinity,
@@ -219,7 +190,7 @@ class _LocationScreenState extends State<LocationScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          // fake streets
+        // streets
           Container(width: double.infinity, height: 12, color: Colors.white),
           Container(width: double.infinity, height: 12, color: Colors.white),
           Container(width: double.infinity, height: 12, color: Colors.white),
@@ -267,7 +238,6 @@ class _LocationScreenState extends State<LocationScreen> {
                       ],
                     )
                   else
-                    // the old grey placeholder while we look, or if we give up
                     _placeholderMap(),
 
                   // still looking up the place
@@ -277,7 +247,7 @@ class _LocationScreenState extends State<LocationScreen> {
                           color: AppColors.primary),
                     ),
 
-                  // map data credit (required by OpenStreetMap)
+                  // map data 
                   if (_coords != null)
                     Positioned(
                       right: 8,

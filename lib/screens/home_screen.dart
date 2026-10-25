@@ -93,6 +93,14 @@ class _HomeScreenState extends State<HomeScreen> {
       FirestoreService().removeStoredNotifications();
     });
 
+    // keep the stored event statuses in line with their own
+    // schedules (upcoming -> completed -> archived). The lists
+    // below are filtered by date anyway, so a failed write never
+    // breaks the screen — it only gets logged.
+    FirestoreService().syncEventStatuses().catchError(
+          (Object error) => debugPrint('Event status sync failed: $error'),
+        );
+
     // Google users without a password yet: offer to set one up
     _offerPasswordSetupOnce();
   }
@@ -850,6 +858,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 // get the events, then apply search, category,
                 // date filters and sorting
                 List<QueryDocumentSnapshot> events = snapshot.data!.docs;
+
+                // events that already finished leave the main list:
+                // the finished ones get their own dashboard section,
+                // the archived ones only show in the archived section
+                List finished = [];
+                List archived = [];
+                for (var event in events) {
+                  Map data = event.data() as Map;
+                  String eventFilter = eventFilterState(data);
+                  if (eventFilter == 'completed') finished.add(event);
+                  if (eventFilter == 'archived') archived.add(event);
+                }
+
+                // the sections only show while browsing (no search,
+                // no category, and not under the "Past events" filter)
+                bool browseMode = searchText.isEmpty &&
+                    selectedCategory == 'All' &&
+                    whenFilter != 'Already happened';
+                bool hasFilterSections =
+                    browseMode && (finished.isNotEmpty || archived.isNotEmpty);
+
                 List filtered = events.where((event) {
                   Map data = event.data() as Map;
                   bool matchSearch = textOf(
@@ -860,12 +889,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       textOf(data['category']) == selectedCategory;
                   bool matchWhen = _matchesWhen(data);
                   bool matchPast = !hidePast || !_isPast(data);
-                  return matchSearch && matchCategory && matchWhen && matchPast;
+                  // upcoming events always belong in the main list;
+                  // finished ones only return under "Already
+                  // happened"; archived ones live in their section
+                  String eventFilter = eventFilterState(data);
+                  bool matchFilter = eventFilter == 'upcoming' ||
+                      (eventFilter == 'completed' &&
+                          whenFilter == 'Already happened');
+                  return matchSearch &&
+                      matchCategory &&
+                      matchWhen &&
+                      matchPast &&
+                      matchFilter;
                 }).toList();
 
                 _sortEvents(filtered);
 
-                if (filtered.isEmpty) {
+                if (filtered.isEmpty && !hasFilterSections) {
                   bool filtersOn =
                       activeFilterCount > 0 ||
                       selectedCategory != 'All' ||
@@ -915,20 +955,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
-                // first event becomes the big featured card
-                DocumentSnapshot firstEvent = filtered.first;
-                Map firstData = firstEvent.data() as Map;
-                List rest = filtered.skip(1).toList();
+                List<Widget> content = [];
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // featured event card
-                    featuredCard(firstEvent, firstData),
+                if (filtered.isNotEmpty) {
+                  // first event becomes the big featured card
+                  DocumentSnapshot firstEvent = filtered.first;
+                  Map firstData = firstEvent.data() as Map;
+                  List rest = filtered.skip(1).toList();
 
-                    const SizedBox(height: 20),
+                  content.add(featuredCard(firstEvent, firstData));
+                  content.add(const SizedBox(height: 20));
 
-                    // upcoming header
+                  // upcoming header
+                  content.add(
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -954,13 +993,49 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+                  );
 
-                    const SizedBox(height: 12),
+                  content.add(const SizedBox(height: 12));
 
-                    // the rest of the events
-                    for (var event in rest)
-                      eventCard(event, event.data() as Map),
-                  ],
+                  // the rest of the events
+                  for (var event in rest) {
+                    content.add(eventCard(event, event.data() as Map));
+                  }
+                } else {
+                  // nothing upcoming to show — the finished and
+                  // archived sections below carry the screen
+                  content.add(
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        'No upcoming events right now.',
+                        style: TextStyle(color: AppColors.greyText),
+                      ),
+                    ),
+                  );
+                }
+
+                if (hasFilterSections) {
+                  content.add(
+                    filterSection(
+                      title: 'Finished Events',
+                      hint: 'Recently concluded — still worth a look.',
+                      events: finished,
+                    ),
+                  );
+                  content.add(
+                    filterSection(
+                      title: 'Archived Events',
+                      hint:
+                          'Concluded over $eventArchiveAfterDays days ago.',
+                      events: archived,
+                    ),
+                  );
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: content,
                 );
               },
             ),
@@ -1280,6 +1355,138 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const Icon(Icons.chevron_right, color: AppColors.greyText),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // a dashboard section for events that already finished
+  // (Finished Events and Archived Events each get one)
+  Widget filterSection({
+    required String title,
+    required String hint,
+    required List events,
+  }) {
+    if (events.isEmpty) return const SizedBox.shrink();
+
+    // most recently finished first
+    List sorted = [...events];
+    sorted.sort((a, b) {
+      Map dataA = a.data() as Map;
+      Map dataB = b.data() as Map;
+      return eventEnd(textOf(dataB['dateLabel']), textOf(dataB['timeLabel']))
+          .compareTo(
+              eventEnd(textOf(dataA['dateLabel']), textOf(dataA['timeLabel'])));
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+
+        // section header with a count
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '${sorted.length} ${sorted.length == 1 ? 'event' : 'events'}',
+              style: const TextStyle(
+                color: AppColors.greyText,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 4),
+
+        Text(
+          hint,
+          style: const TextStyle(color: AppColors.greyText, fontSize: 12),
+        ),
+
+        const SizedBox(height: 12),
+
+        // horizontally scrolling cards
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var event in sorted)
+                filterCard(event, event.data() as Map),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // a small card inside the Finished / Archived sections
+  Widget filterCard(DocumentSnapshot event, Map data) {
+    return GestureDetector(
+      onTap: () {
+        // open the event details inside the shell so the bottom
+        // navigation bar stays visible
+        _shellNav.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) =>
+                EventDetailsScreen(eventId: event.id, data: data),
+          ),
+        );
+      },
+      child: Container(
+        width: 170,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAFAFA),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                textOf(data['image']),
+                width: double.infinity,
+                height: 70,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: double.infinity,
+                  height: 70,
+                  color: AppColors.primary,
+                  child: const Icon(Icons.event, color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              textOf(data['title']),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${textOf(data['dateLabel'])} · ${timeStart(data['timeLabel'])}',
+              style: const TextStyle(
+                color: AppColors.greyText,
+                fontSize: 11,
+              ),
+            ),
           ],
         ),
       ),

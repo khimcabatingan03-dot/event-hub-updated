@@ -109,3 +109,80 @@ DateTime getEventTime(String? dateLabel, String? timeLabel) {
 
   return DateTime(date.year, date.month, date.day, hour, minute);
 }
+
+// ------------------------------------------------------------
+// MY EVENTS vs EVENT HISTORY
+// ------------------------------------------------------------
+
+// end of the time range: "1:00 PM - 3:00 PM" -> "3:00 PM"
+// (a single time means the event ends at the same time it starts)
+String timeEnd(dynamic timeLabel) {
+  String value = (timeLabel ?? '').toString().trim();
+  if (value.isEmpty) return '';
+  if (!value.contains(' - ')) return value;
+  return value.split(' - ').last.trim();
+}
+
+// the moment the event is over: date + end time
+// (falls back to the end of the day when no time is stored)
+DateTime eventEnd(String? dateLabel, String? timeLabel) {
+  String end = timeEnd(timeLabel);
+  if (end.isEmpty) {
+    DateTime day = getEventDate(dateLabel);
+    return DateTime(day.year, day.month, day.day, 23, 59);
+  }
+  return getEventTime(dateLabel, end);
+}
+
+// true once the event date (and its end time) has passed
+bool isEventPast(String? dateLabel, String? timeLabel) =>
+    eventEnd(dateLabel, timeLabel).isBefore(DateTime.now());
+
+// which tab a registration belongs to:
+// - status "completed" is sticky -> Event History
+// - otherwise compare the date (this also covers registrations
+//   that were saved before the status field existed)
+bool isCompletedRegistration(Map data) {
+  if (textOf(data['status']) == 'completed') return true;
+  return isEventPast(textOf(data['dateLabel']), textOf(data['timeLabel']));
+}
+
+// dateLabel stores no year and getEventDate guesses the current one.
+// A completed event can never still be ahead of us, so when the guess
+// lands in the future the event really happened last year.
+DateTime finishedAt(String? dateLabel, String? timeLabel) {
+  DateTime end = eventEnd(dateLabel, timeLabel);
+  if (end.isAfter(DateTime.now())) {
+    end = DateTime(end.year - 1, end.month, end.day, end.hour, end.minute);
+  }
+  return end;
+}
+
+// ------------------------------------------------------------
+// EVENT FILTERS (upcoming / completed / archived)
+// ------------------------------------------------------------
+
+// how long a finished event stays in the dashboard's
+// "Finished Events" section before it is archived
+const int eventArchiveAfterDays = 30;
+
+// the status of an event, decided only by its own end date and
+// time — never by when a student registered:
+//   upcoming  — the event has not finished yet
+//   completed — finished less than 30 days ago
+//   archived  — finished 30 or more days ago
+String eventStatusFor(String? dateLabel, String? timeLabel) {
+  DateTime end = eventEnd(dateLabel, timeLabel);
+  DateTime now = DateTime.now();
+  if (end.isAfter(now)) return 'upcoming';
+  return now.difference(end).inDays >= eventArchiveAfterDays
+      ? 'archived'
+      : 'completed';
+}
+
+// same, straight from an event document
+String eventFilterState(Map data) =>
+    eventStatusFor(textOf(data['dateLabel']), textOf(data['timeLabel']));
+
+// still worth showing while browsing (View All Events)
+bool isUpcomingEvent(Map data) => eventFilterState(data) == 'upcoming';

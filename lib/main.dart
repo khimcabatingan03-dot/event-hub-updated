@@ -40,12 +40,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ------------------------------------------------------------
-// DECIDES WHERE THE APP STARTS
-// ------------------------------------------------------------
-// - nobody logged in          -> WelcomeScreen
-// - profile not finished yet  -> CompleteProfileScreen (new Google users)
-// - completed profile         -> HomeScreen (returning users skip the form)
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -71,13 +65,10 @@ class _AuthGateState extends State<AuthGate> {
     }
 
     try {
-      // returning students with a saved profile go straight home;
-      // brand new Google users still need the short profile form
       bool complete = await AuthService().hasCompletedProfile(user);
       _setDestination(
           complete ? const HomeScreen() : const CompleteProfileScreen());
     } catch (_) {
-      // offline or Firestore unavailable — don't lock the student out
       _setDestination(const HomeScreen());
     }
   }
@@ -93,7 +84,6 @@ class _AuthGateState extends State<AuthGate> {
   Widget build(BuildContext context) {
     if (_destination != null) return _destination!;
 
-    // short check: white screen with the app logo
     return const Scaffold(
       backgroundColor: Colors.white,
       body: Center(

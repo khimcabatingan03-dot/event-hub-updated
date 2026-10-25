@@ -6,12 +6,6 @@ import '../services/firestore_service.dart';
 import '../services/notification_store.dart';
 import 'event_details_screen.dart';
 
-// ------------------------------------------------------------
-// NOTIFICATIONS (kept on the device — no Firestore storage)
-// ------------------------------------------------------------
-// The list is rendered from NotificationStore, which is a local,
-// per-student list. Events it links to still load from Firestore.
-
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -23,11 +17,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    // make sure this student's local list is loaded
     NotificationStore.instance.ensureLoaded();
   }
 
-  // open a notification: read it, then open its event (if it has one)
+  // open a notification read it, then open its event (if it has one)
   void openNotification(AppNotification notification) async {
     if (!notification.read) {
       await NotificationStore.instance.markRead(notification.id);

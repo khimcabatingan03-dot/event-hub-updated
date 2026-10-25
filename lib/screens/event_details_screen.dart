@@ -45,8 +45,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
     showModalBottomSheet(
       context: context,
-      // the sheet covers the full screen, not just the area above
-      // the bottom navigation bar
       useRootNavigator: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -210,7 +208,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
           .scheduleReminder(textOf(widget.data['title']), eventTime);
     }
 
-    // leave a notification in the bell feed too (kept on the device)
+    // leave a notification 
     await NotificationStore.instance.add(
       title: 'Registration confirmed',
       body:
@@ -348,7 +346,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
                       const SizedBox(height: 20),
 
-                      // date and time side by side
+                      // date and time 
                       Row(
                         children: [
                           Expanded(

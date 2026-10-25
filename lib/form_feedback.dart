@@ -1,24 +1,13 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
-// ------------------------------------------------------------
-// SHARED FEEDBACK FOR FORMS AND ACTIONS
-// ------------------------------------------------------------
-// - red text under a field  -> invalid input (used via validators)
-// - SnackBars                -> success / error messages
-// - AlertDialogs             -> important confirmations or issues
-
-// ------------------------------------------------------------
-// SNACKBARS
-// ------------------------------------------------------------
-
-// success message (maroon background, the app color)
+// success message 
 void showSuccessSnack(BuildContext context, String message) {
   if (!context.mounted) return;
   showSnackOn(ScaffoldMessenger.of(context), message, error: false);
 }
 
-// error message (red background)
+// error message 
 void showErrorSnack(BuildContext context, String message) {
   if (!context.mounted) return;
   showSnackOn(ScaffoldMessenger.of(context), message, error: true);
@@ -37,10 +26,6 @@ void showSnackOn(ScaffoldMessengerState messenger, String message,
       ),
     );
 }
-
-// ------------------------------------------------------------
-// DIALOGS
-// ------------------------------------------------------------
 
 // yes / no confirmation — returns true when the user confirms
 Future<bool> showConfirmDialog(
@@ -101,10 +86,6 @@ Future<void> showInfoDialog(
   );
 }
 
-// ------------------------------------------------------------
-// VALIDATORS (return a red message, or null when the input is fine)
-// ------------------------------------------------------------
-
 String? validateRequired(String? value, {String label = 'This field'}) {
   if (value == null || value.trim().isEmpty) return '$label is required.';
   return null;
@@ -140,14 +121,7 @@ String? validatePasswordConfirmation(String? value, String password) {
   return null;
 }
 
-// ------------------------------------------------------------
-// INPUT DECORATION (matches the reference design)
-// ------------------------------------------------------------
-// - label sits notched inside the border and turns red on error
-// - red outline while the input is invalid
-// - red message directly below the field
-// Pair with a Form using AutovalidateMode.onUserInteraction so the
-// red state disappears automatically once the input becomes valid.
+
 InputDecoration appInputDecoration({
   required String label,
   String? hint,
@@ -163,11 +137,11 @@ InputDecoration appInputDecoration({
     suffixIcon: suffixIcon,
     suffixText: suffixText,
     suffixStyle: suffixStyle,
-    // normal outline (theme grey) while the input is valid
+    // normal outline while the input is valid
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
     ),
-    // invalid input -> red outline around the field
+    // invalid input - red outline around the field
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: Colors.red),

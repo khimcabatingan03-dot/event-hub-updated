@@ -6,14 +6,6 @@ import '../services/auth_services.dart';
 import 'complete_profile_screen.dart';
 import 'home_screen.dart';
 
-// ------------------------------------------------------------
-// SET AN EVENTHUB PASSWORD FOR GOOGLE-CREATED ACCOUNTS
-// ------------------------------------------------------------
-// Google users can add a password to the *same* account so they can
-// log in with Google OR with email/password — no duplicate accounts.
-// The student always confirms ownership with Google first, and their
-// Google password is never asked for or stored.
-
 class SetPasswordScreen extends StatefulWidget {
   const SetPasswordScreen({super.key, required this.email});
 
@@ -49,7 +41,6 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
     });
 
     try {
-      // proves ownership with Google, then updates THIS account
       await AuthService().setEventHubPassword(
         expectedEmail: widget.email,
         newPassword: passwordController.text,
@@ -89,7 +80,6 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
     }
   }
 
-  // friendly text for Firebase errors
   String _messageFor(FirebaseAuthException e) {
     switch (e.code) {
       case 'account-exists-with-different-credential':

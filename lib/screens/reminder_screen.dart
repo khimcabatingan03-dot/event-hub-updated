@@ -96,10 +96,10 @@ class _ReminderScreenState extends State<ReminderScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(value
-              ? 'Reminder turned on.'
-              : 'Reminder turned off.'),
-          backgroundColor: AppColors.primary,
+          content: Text(
+              value ? 'Reminder turned on.' : 'Reminder turned off.',
+              style: const TextStyle(color: Colors.black87)),
+          backgroundColor: AppColors.success,
         ),
       );
     }

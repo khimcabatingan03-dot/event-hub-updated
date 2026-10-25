@@ -92,6 +92,8 @@ class FirestoreService {
       'lat': lat, // venue coordinates (used by the map)
       'lng': lng,
       'createdAt': Timestamp.now(),
+      // the filter state starts from the event's own schedule
+      'status': eventStatusFor(dateLabel, timeLabel),
     });
   }
 
@@ -108,6 +110,28 @@ class FirestoreService {
   // delete an event
   Future<void> deleteEvent(String eventId) async {
     await _db.collection('events').doc(eventId).delete();
+  }
+
+  // keep every event's stored status in line with its own end date
+  // and time: "upcoming" -> "completed" once it finishes ->
+  // "archived" 30 days later. Nothing is deleted — only the status
+  // field changes, and only for the events that actually differ.
+  Future<void> syncEventStatuses() async {
+    QuerySnapshot snapshot = await _db.collection('events').get();
+
+    WriteBatch batch = _db.batch();
+    bool dirty = false;
+
+    for (DocumentSnapshot doc in snapshot.docs) {
+      Map data = doc.data() as Map;
+      String wanted = eventFilterState(data);
+      if (textOf(data['status']) == wanted) continue;
+
+      batch.update(doc.reference, {'status': wanted});
+      dirty = true;
+    }
+
+    if (dirty) await batch.commit();
   }
 
   // ------------------------------------------------------------
@@ -552,5 +576,35 @@ class FirestoreService {
   // cancel registration (delete)
   Future<void> cancelRegistration(String registrationId) async {
     await _db.collection('registrations').doc(registrationId).delete();
+  }
+
+  // keep the stored status in line with the event date: "completed"
+  // once the event is over, "registered" while it is still upcoming.
+  // Only the registrations that actually changed are written, so it
+  // is safe to call this as often as wanted.
+  Future<void> syncRegistrationStatuses() async {
+    String uid = FirebaseAuth.instance.currentUser!.uid;
+    QuerySnapshot snapshot = await _db
+        .collection('registrations')
+        .where('userId', isEqualTo: uid)
+        .get();
+
+    WriteBatch batch = _db.batch();
+    bool dirty = false;
+
+    for (DocumentSnapshot doc in snapshot.docs) {
+      Map data = doc.data() as Map;
+      String wanted =
+          isEventPast(textOf(data['dateLabel']), textOf(data['timeLabel']))
+              ? 'completed'
+              : 'registered';
+
+      if (textOf(data['status']) == wanted) continue;
+
+      batch.update(doc.reference, {'status': wanted});
+      dirty = true;
+    }
+
+    if (dirty) await batch.commit();
   }
 }

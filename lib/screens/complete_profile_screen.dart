@@ -7,14 +7,7 @@ import '../services/auth_services.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
-// ------------------------------------------------------------
 // PROFILE FORM FOR NEW GOOGLE USERS
-// ------------------------------------------------------------
-// Shown once after Google sign-in when the student has no saved
-// profile yet. The Full Name and Student Email come straight from
-// the Google account, so only the Student ID has to be typed in.
-// Returning students with a completed profile never see this screen.
-
 class CompleteProfileScreen extends StatefulWidget {
   const CompleteProfileScreen({super.key});
 
@@ -57,7 +50,6 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
     User? user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      // session ended while the form was open
       await showInfoDialog(
         context,
         title: 'Signed out',
@@ -183,7 +175,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
                 const SizedBox(height: 20),
 
-                // student id (the only field to fill in)
+                // student id 
                 TextFormField(
                   controller: studentIdController,
                   keyboardType: TextInputType.number,
@@ -205,7 +197,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
                 const SizedBox(height: 20),
 
-                // student email (from Google, not editable)
+                // student email
                 TextFormField(
                   controller: emailController,
                   readOnly: true,

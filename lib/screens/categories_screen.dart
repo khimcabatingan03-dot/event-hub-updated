@@ -16,7 +16,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   // the category the student picked (null = show all)
   String? chosenCategory;
 
-  // all the categories in the app (colors match the mockup)
+  // all the categories in the app
   final List<Map> categories = [
     {'name': 'Academic', 'icon': Icons.menu_book, 'color': AppColors.primary},
     {'name': 'Sports', 'icon': Icons.language, 'color': Colors.black},
@@ -166,7 +166,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                           ),
                         ],
                       )
-                    // when a category is picked, show its events
                     : eventList(chosenCategory!),
               ),
             ],

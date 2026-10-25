@@ -16,6 +16,12 @@ class MyEventsScreen extends StatefulWidget {
 
 class _MyEventsScreenState extends State<MyEventsScreen> {
   @override
+  void initState() {
+    super.initState();
+    FirestoreService().syncRegistrationStatuses().ignore();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
@@ -51,8 +57,23 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
                       );
                     }
 
-                    List<QueryDocumentSnapshot> registrations =
-                        snapshot.data!.docs;
+                    // only upcoming events live here — anything that
+                    // already finished belongs to the Event History tab
+                    List<QueryDocumentSnapshot> registrations = snapshot
+                        .data!.docs
+                        .where((doc) =>
+                            !isCompletedRegistration(doc.data() as Map))
+                        .toList();
+
+                    // soonest event first
+                    registrations.sort((a, b) {
+                      Map dataA = a.data() as Map;
+                      Map dataB = b.data() as Map;
+                      return eventEnd(textOf(dataA['dateLabel']),
+                              textOf(dataA['timeLabel']))
+                          .compareTo(eventEnd(textOf(dataB['dateLabel']),
+                              textOf(dataB['timeLabel'])));
+                    });
 
                     if (registrations.isEmpty) {
                       return const Center(

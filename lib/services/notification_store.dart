@@ -4,14 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// ------------------------------------------------------------
-// IN-APP NOTIFICATIONS — STORED ON THE DEVICE ONLY
-// ------------------------------------------------------------
-// Notifications used to be saved in a Firestore collection. They are
-// now kept locally (SharedPreferences), so the bell feed, the unread
-// badge, "mark read" and the event deep-links all keep working
-// without writing any notification data to Firestore.
-
 /// one notification in the bell feed
 class AppNotification {
   AppNotification({

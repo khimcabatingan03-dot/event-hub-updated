@@ -29,8 +29,6 @@ class AuthService {
     // save the full name to the account
     await result.user!.updateDisplayName(name);
     // also save the student info in Firestore
-    // (the name is passed in directly, because the user object still
-    //  returns the empty name it had when the account was created)
     await saveUserToFirestore(result.user!,
         studentNumber: studentNumber, name: name, hasPassword: true);
     return result;
@@ -45,9 +43,6 @@ class AuthService {
       email: email,
       password: password,
     );
-    // refresh the student info in Firestore — this also fills in the
-    // empty "name" left behind by older sign-ups and remembers that
-    // this account can log in with a password
     await saveUserToFirestore(result.user!, hasPassword: true);
     return result;
   }
@@ -72,9 +67,6 @@ class AuthService {
 
     UserCredential result = await _auth.signInWithCredential(credential);
 
-    // save the student info in Firestore (only the first time)
-    // — a brand new Google account is flagged as "no password yet",
-    // existing profiles are never changed here
     bool alreadySaved = (await _readProfile(result.user!)).isNotEmpty;
     await saveUserToFirestore(
       result.user!,
@@ -84,20 +76,11 @@ class AuthService {
     return result;
   }
 
-  // ------------------------------------------------------------
-  // PROFILE COMPLETION (used after Google sign-in)
-  // ------------------------------------------------------------
-
-  // the document id used by older versions of the app (the email
-  // address) — kept so nothing saved back then gets lost
   String _oldProfileId(User user) {
     String email = (user.email ?? '').toLowerCase().trim();
     return email.contains('@') ? email : '';
   }
 
-  // read the profile of this student: the old email document first,
-  // then the document keyed by the account id on top of it (the newer
-  // one wins, but an empty value never wipes what was already saved)
   Future<Map<String, dynamic>> _readProfile(User user) async {
     CollectionReference users = FirebaseFirestore.instance.collection('users');
 
