@@ -83,10 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
     String email = emailController.text.trim();
     String password = passwordController.text;
 
-    // invalid input -> red border + red message below that field
+    // invalid input - red message below that field
     // (nothing is sent to Firebase until every field is valid)
     if (!(_formKey.currentState?.validate() ?? false)) {
-      // field errors replace any older form-wide message
       if (errorMessage.isNotEmpty) {
         setState(() {
           errorMessage = '';
@@ -198,8 +197,6 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Form(
-          // red border + red message while typing; both clear
-          // automatically as soon as the input becomes valid
           autovalidateMode: AutovalidateMode.onUserInteraction,
           key: _formKey,
           child: SingleChildScrollView(

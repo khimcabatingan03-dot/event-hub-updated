@@ -36,7 +36,6 @@ class _ReminderScreenState extends State<ReminderScreen> {
     reminderOn = widget.reminderOn;
   }
 
-  // convert "OCT 28" to "Wednesday, October 28"
   String fullDate(String dateLabel) {
     List<String> monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',

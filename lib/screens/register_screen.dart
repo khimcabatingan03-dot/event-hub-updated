@@ -36,7 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String email = emailController.text.trim();
     String password = passwordController.text;
 
-    // invalid input -> red border + red message below each field
+    // invalid input - red message below each field
     // (nothing is sent to Firebase until every field is valid)
     if (!(_formKey.currentState?.validate() ?? false)) {
       // field errors replace any older form-wide message
@@ -74,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
       if (!mounted) return;
       if (e.code == 'email-already-in-use') {
-        // important issue -> ask the student what to do next
+        // important issue - ask the student what to do next
         _offerLoginInstead(email);
       } else if (e.code == 'weak-password') {
         setState(() {
@@ -136,8 +136,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Form(
-          // red border + red message while typing; both clear
-          // automatically as soon as the input becomes valid
           autovalidateMode: AutovalidateMode.onUserInteraction,
           key: _formKey,
           child: SingleChildScrollView(
@@ -188,12 +186,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  // hard stop: can't type past 10 digits
+                  // can't type past 10 digits
                   LengthLimitingTextInputFormatter(maxStudentNumberLength),
                 ],
                 validator: validateStudentId,
                 onChanged: (value) {
-                  // rebuild so the counter below updates while typing
                   setState(() {});
                 },
                 decoration: appInputDecoration(
@@ -209,7 +206,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 20),
 
-              // school email — red outline + red message when invalid
+              // school email — red message when invalid
               TextFormField(
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -223,7 +220,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 20),
 
-              // password — red outline + red message when invalid
+              // password — red message when invalid
               TextFormField(
                 controller: passwordController,
                 obscureText: obscurePassword,
@@ -250,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               const SizedBox(height: 20),
 
-              // confirm password — red outline + red message when invalid
+              // confirm password — red message when invalid
               TextFormField(
                 controller: confirmController,
                 obscureText: obscurePassword,

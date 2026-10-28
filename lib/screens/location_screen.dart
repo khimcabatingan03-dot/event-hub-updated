@@ -128,11 +128,6 @@ class _LocationScreenState extends State<LocationScreen> {
   }
 
   // open the location in a maps app
-  //
-  // NOTE: we do NOT gate this with canLaunchUrl() — on Android 11+ the
-  // package-visibility rules often make it return false even when a maps
-  // app IS installed, which silently blocked the button. Instead we try
-  // each way to open it and only report a failure if none of them work.
   Future<void> openInMaps() async {
     final String place = widget.location.trim();
 
@@ -145,7 +140,6 @@ class _LocationScreenState extends State<LocationScreen> {
     final String encoded = Uri.encodeComponent(place);
     final List<Uri> candidates = [];
 
-    // when we already know exactly where it is, lead with the coordinates
     if (_coords != null) {
       final String pos = '${_coords!.latitude},${_coords!.longitude}';
       candidates.add(Uri.parse('geo:$pos?q=$encoded'));
@@ -211,7 +205,6 @@ class _LocationScreenState extends State<LocationScreen> {
             Expanded(
               child: Stack(
                 children: [
-                  // the real map when we know where it is
                   if (_coords != null)
                     FlutterMap(
                       options: MapOptions(

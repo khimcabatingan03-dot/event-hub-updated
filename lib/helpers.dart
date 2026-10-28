@@ -1,26 +1,16 @@
 // small helpers used in the app
 
-// ------------------------------------------------------------
-// SAFE readers for the event fields
-// Firestore fields can be missing or malformed (e.g. when an
-// event is added by hand), so these never throw — they fall
-// back to an empty string instead of crashing the screen.
-// ------------------------------------------------------------
-
-// "1:00 PM - 3:00 PM" -> "1:00 PM". Empty string if missing.
 String timeStart(dynamic timeLabel) {
   String value = (timeLabel ?? '').toString().trim();
   if (value.isEmpty) return '';
   return value.split(' - ')[0].trim();
 }
 
-// "OCT 28" -> "OCT". Empty string if missing.
 String dateMonth(dynamic dateLabel) {
   List<String> parts = (dateLabel ?? '').toString().trim().split(' ');
   return parts.first.trim();
 }
 
-// "OCT 28" -> "28". Empty string if missing.
 String dateDay(dynamic dateLabel) {
   List<String> parts = (dateLabel ?? '').toString().trim().split(' ');
   if (parts.length < 2) return '';
@@ -31,7 +21,6 @@ String dateDay(dynamic dateLabel) {
 String textOf(dynamic value) => (value ?? '').toString();
 
 // "how long ago" text for a notification timestamp
-// (example: "just now", "12 min ago", "3 h ago", "2 d ago", "OCT 05")
 String timeAgo(DateTime time) {
   Duration diff = DateTime.now().difference(time);
 
@@ -49,12 +38,6 @@ String timeAgo(DateTime time) {
   return '${months[time.month - 1]} $day';
 }
 
-// ------------------------------------------------------------
-// READABLE DOCUMENT IDS
-// ------------------------------------------------------------
-
-// turn any title into a clean document id
-// "Research Congress 2026" -> "research-congress-2026"
 String slugify(String text) {
   String slug = text.toLowerCase().trim();
   slug = slug.replaceAll(RegExp(r'[^a-z0-9\s]'), ' '); // drop punctuation
@@ -64,22 +47,22 @@ String slugify(String text) {
   return slug.isEmpty ? 'item' : slug; // never empty
 }
 
-// a readable time stamp for ids (example: "2026-10-15-153012")
+// a readable time stamp for ids
 String idStamp(DateTime time) {
   String two(int n) => n.toString().padLeft(2, '0');
   return '${time.year}-${two(time.month)}-${two(time.day)}-'
       '${two(time.hour)}${two(time.minute)}${two(time.second)}';
 }
 
-// convert the dateLabel (example: "OCT 28") to a real date
+// event date
 DateTime getEventDate(String? dateLabel) {
   List<String> months = [
     'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
     'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
   ];
 
-  List<String> parts = (dateLabel ?? '').trim().split(' '); // OCT 28
-  if (parts.length < 2) return DateTime.now(); // fallback
+  List<String> parts = (dateLabel ?? '').trim().split(' '); 
+  if (parts.length < 2) return DateTime.now(); 
 
   int month = months.indexOf(parts[0].toUpperCase()) + 1;
   int day = int.tryParse(parts[1]) ?? 1;
@@ -88,13 +71,12 @@ DateTime getEventDate(String? dateLabel) {
   return DateTime(DateTime.now().year, month, day);
 }
 
-// convert the start of the timeLabel (example: "1:00 PM") to hours and minutes
+// convert the start of the timeLabel to hours and minutes
 DateTime getEventTime(String? dateLabel, String? timeLabel) {
   DateTime date = getEventDate(dateLabel);
 
-  // example: "1:00 PM - 3:00 PM" -> "1:00 PM"
   String startTime = timeStart(timeLabel);
-  if (startTime.isEmpty) return date; // fallback: midnight of the day
+  if (startTime.isEmpty) return date; 
 
   List<String> timeParts = startTime.split(' '); // [1:00, PM]
   List<String> hourMinute = timeParts[0].split(':'); // [1, 00]
@@ -110,12 +92,8 @@ DateTime getEventTime(String? dateLabel, String? timeLabel) {
   return DateTime(date.year, date.month, date.day, hour, minute);
 }
 
-// ------------------------------------------------------------
-// MY EVENTS vs EVENT HISTORY
-// ------------------------------------------------------------
 
-// end of the time range: "1:00 PM - 3:00 PM" -> "3:00 PM"
-// (a single time means the event ends at the same time it starts)
+// MY EVENTS vs EVENT HISTORY
 String timeEnd(dynamic timeLabel) {
   String value = (timeLabel ?? '').toString().trim();
   if (value.isEmpty) return '';
@@ -138,7 +116,6 @@ DateTime eventEnd(String? dateLabel, String? timeLabel) {
 bool isEventPast(String? dateLabel, String? timeLabel) =>
     eventEnd(dateLabel, timeLabel).isBefore(DateTime.now());
 
-// which tab a registration belongs to:
 // - status "completed" is sticky -> Event History
 // - otherwise compare the date (this also covers registrations
 //   that were saved before the status field existed)
@@ -158,10 +135,7 @@ DateTime finishedAt(String? dateLabel, String? timeLabel) {
   return end;
 }
 
-// ------------------------------------------------------------
 // EVENT FILTERS (upcoming / completed / archived)
-// ------------------------------------------------------------
-
 // how long a finished event stays in the dashboard's
 // "Finished Events" section before it is archived
 const int eventArchiveAfterDays = 30;
