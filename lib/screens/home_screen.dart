@@ -23,18 +23,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // bottom navigation
   int currentTab = 0;
 
-  // the shell that hosts every page (home, categories, my events,
-  // history, notifications, event details) so the bottom
-  // navigation bar below stays visible at all times
   final GlobalKey<NavigatorState> _shellNav = GlobalKey<NavigatorState>();
   late final _ShellTabObserver _tabObserver = _ShellTabObserver(
     _onShellTabChanged,
   );
 
-  // keeps the highlighted button in sync with the page on top
   void _onShellTabChanged(int tab) {
     if (!mounted || currentTab == tab) return;
     setState(() => currentTab = tab);
@@ -53,12 +48,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // selected category filter
   String selectedCategory = 'All';
 
-  // filter sheet choices
+  // filter choices
   String whenFilter = 'Anytime';
   String sortBy = 'Date';
   bool hidePast = false;
 
-  // how many extra filters are on (shown as a badge on the button)
+  // how many extra filters are on 
   int get activeFilterCount {
     int count = 0;
     if (whenFilter != 'Anytime') count++;
@@ -79,33 +74,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // load the local notifications (bell feed / badge) and seed the
-    // welcome messages the first time
+    
     NotificationStore.instance.ensureLoaded().then((_) {
       NotificationStore.instance.seedSamples();
     });
 
-    // give any old random Firestore ids readable names, then add the
-    // sample events one time (only when the list is empty) and clear
-    // the old notification collection that is no longer used
     FirestoreService().makeIdsReadable().then((_) {
       FirestoreService().addSampleEvents();
       FirestoreService().removeStoredNotifications();
     });
 
-    // keep the stored event statuses in line with their own
-    // schedules (upcoming -> completed -> archived). The lists
-    // below are filtered by date anyway, so a failed write never
-    // breaks the screen — it only gets logged.
     FirestoreService().syncEventStatuses().catchError(
           (Object error) => debugPrint('Event status sync failed: $error'),
         );
 
-    // Google users without a password yet: offer to set one up
+    // Google users without a password yet (offer to set one up)
     _offerPasswordSetupOnce();
   }
 
-  // the AlertDialog is only shown once per app run
   static bool _passwordOfferShown = false;
 
   void _offerPasswordSetupOnce() {

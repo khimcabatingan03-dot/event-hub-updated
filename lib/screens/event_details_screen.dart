@@ -40,7 +40,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
   // press the register now button
   void registerNow() {
-    // reminder switch value (starts off)
     bool reminderOn = false;
 
     showModalBottomSheet(
@@ -126,7 +125,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
                   const SizedBox(height: 20),
 
-                  // reminder switch
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -170,7 +168,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
 
                   const SizedBox(height: 10),
 
-                  // not now button
                   Center(
                     child: TextButton(
                       onPressed: () => Navigator.pop(context),
@@ -200,7 +197,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       reminderOn: reminderOn,
     );
 
-    // schedule the local notification if the switch was on
+    // schedule the local notif
     if (reminderOn) {
       DateTime eventTime =
           getEventTime(widget.data['dateLabel'], widget.data['timeLabel']);

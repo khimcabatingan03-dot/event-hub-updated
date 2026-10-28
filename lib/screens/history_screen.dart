@@ -15,9 +15,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    // persist the right status in the background: finished events get
-    // "completed" here. The list below is filtered by date anyway, so
-    // a failed write never breaks what's on screen.
+   
     FirestoreService().syncRegistrationStatuses().ignore();
   }
 

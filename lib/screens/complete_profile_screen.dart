@@ -7,7 +7,7 @@ import '../services/auth_services.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
 
-// PROFILE FORM FOR NEW GOOGLE USERS
+// profile form for google sign-in
 class CompleteProfileScreen extends StatefulWidget {
   const CompleteProfileScreen({super.key});
 
@@ -23,13 +23,13 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
   bool loading = false;
 
-  // max digits allowed for the student id (same rule as sign-up)
+  // max digits allowed for the studentID
   static const int maxStudentIdLength = 10;
 
   @override
   void initState() {
     super.initState();
-    // details taken automatically from the Google account
+    
     User? user = FirebaseAuth.instance.currentUser;
     nameController = TextEditingController(text: user?.displayName ?? '');
     emailController = TextEditingController(text: user?.email ?? '');
@@ -43,9 +43,8 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     super.dispose();
   }
 
-  // press the save button
   Future<void> saveProfile() async {
-    // invalid input -> red messages appear under the fields
+    // invalid input (red messages appear under the fields
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     User? user = FirebaseAuth.instance.currentUser;

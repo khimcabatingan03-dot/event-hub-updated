@@ -13,7 +13,6 @@ class CategoriesScreen extends StatefulWidget {
 }
 
 class _CategoriesScreenState extends State<CategoriesScreen> {
-  // the category the student picked (null = show all)
   String? chosenCategory;
 
   // all the categories in the app
